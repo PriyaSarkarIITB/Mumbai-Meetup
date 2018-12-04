@@ -1,0 +1,327 @@
+
+# coding: utf-8
+
+# In[1]:
+
+import re
+import pandas as pd
+from sklearn.feature_extraction.text import CountVectorizer
+from collections import Counter
+
+
+# In[18]:
+
+##### Read Data
+data=pd.read_csv("Data.csv")
+
+
+# In[19]:
+
+##### Visualize your Data
+print ("Let's explore our question set",data["question"])
+print ("Length of training set",len(data["question"]))
+print ("Unique answers are",set(data["answer"])," and number of unique answers are ", len(set(data["answer"])))
+
+
+# In[20]:
+
+##### Now let's create a wordcloud to get a better understanding of our corpus
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
+##### Download using conda install -c conda-forge wordcloud
+
+def show_wordcloud(data, title = None):
+    wordcloud = WordCloud(background_color='black',).generate(str(data))
+
+    fig = plt.figure(1, figsize=(12, 12))
+    plt.axis('off')
+    plt.imshow(wordcloud)
+    plt.show()
+
+
+# In[21]:
+
+show_wordcloud(data['question'])
+
+
+# In[22]:
+
+##### Let's change the list of questions into list of words for better visualization
+word_list=[]
+list_question=list(data["question"])
+for sentence in list_question:
+	words_sentence=sentence.split()
+	for words in words_sentence:
+		word_list.append(words)
+
+
+word_list=[word for sentence in list(data["question"]) for word in sentence.split()]
+print(word_list)
+
+
+# In[24]:
+
+##### Now let's find the frequency of each word and the most common words in the corpus
+frequency=Counter(word_list)
+print (frequency)
+print (frequency.most_common(5))
+
+
+# In[26]:
+
+import numpy as np
+
+labels,values = zip(*frequency.items())
+labels=[]
+values=[]
+for T in frequency.most_common(5):
+    labels.append(T[0])
+    values.append(T[1])
+
+indexes = np.arange(len(labels))
+width = 1
+
+plt.bar(indexes, values, width)
+plt.xticks(indexes + width * 0.05, labels)
+plt.show()
+
+
+# In[11]:
+
+##### Now let's pre process/ clean our data
+
+
+# In[13]:
+
+### Remove Punctuations and change words to lower case
+def remove_punctuations(text):    
+    words=[word.lower() for word in text.split()] 
+    print "words after step 1",words
+    words=[w for word in words for w in re.sub(r'[^\w\s]',' ',word).split()]    
+    return words
+
+data["question_punctuation_removed"]=data["question"].apply(remove_punctuations)
+print (data["question_punctuation_removed"])
+
+
+# In[16]:
+
+### Remove StopWords
+from nltk.corpus import stopwords
+stop = set(stopwords.words('english'))
+print (stop)
+def remove_stopwords(text):
+	modified_word_list=[word for word in text if word not in stop]
+	return modified_word_list
+
+data["question_stopword_removed"]=data["question_punctuation_removed"].apply(remove_stopwords)
+print (data["question_stopword_removed"])
+
+
+# In[18]:
+
+### Stemming of Words
+from nltk.stem.porter import PorterStemmer
+st=PorterStemmer()
+def Stemming(text):
+	stemmed_words=[st.stem(word) for word in text] 
+	return stemmed_words
+
+data["question_stemmed"]=data["question_stopword_removed"].apply(Stemming)
+print (data["question_stemmed"])
+
+
+# In[23]:
+
+### Recreating the sentence
+def Recreate(text):
+	word=" ".join(text)
+	return word
+
+data["modified_sentence"]=data["question_stemmed"].apply(Recreate)
+print (data["modified_sentence"])	
+
+
+# In[29]:
+
+def Cleaning(text):
+    text_punctuation_removed=remove_punctuations(text)
+    text_stopword_removed=remove_stopwords(text_punctuation_removed)
+    text_stemmed=Stemming(text_stopword_removed)
+    final_text=Recreate(text_stemmed)
+    print (final_text)
+    return final_text
+    
+
+
+# In[25]:
+
+### Let's change the sentence into a bag of word model
+from sklearn.feature_extraction.text import CountVectorizer
+vectorizer = CountVectorizer()
+X = vectorizer.fit_transform(data["modified_sentence"]).toarray()
+print(X)
+print(vectorizer.get_feature_names())
+
+
+# In[26]:
+
+###### Extra Tf-idf transformation
+#from sklearn.feature_extraction.text import TfidfTransformer
+#tfidf_transformer = TfidfTransformer()
+#X_train_tfidf = tfidf_transformer.fit_transform(data["modified_sentence"])
+#X_train_tfidf.shape
+
+
+# In[30]:
+
+### Let's create our first Classification model
+Y=data["answer"]
+from sklearn.linear_model import LogisticRegression
+clf1 = LogisticRegression().fit(X, Y)
+
+question="What a good day"
+P=vectorizer.transform([Cleaning(question)])
+predict1=clf1.predict(P)
+print (predict1)
+
+
+# In[32]:
+
+from sklearn.naive_bayes import MultinomialNB
+clf2 = MultinomialNB().fit(X, Y)
+
+
+P=vectorizer.transform([Cleaning(question)])
+predict2=clf2.predict(P)
+print (predict2)
+
+
+# In[33]:
+
+from sklearn.tree import DecisionTreeClassifier
+clf3 = DecisionTreeClassifier().fit(X, Y)
+
+P=vectorizer.transform([Cleaning(question)])
+predict3=clf3.predict(P)
+print (predict3)
+
+
+# In[94]:
+
+from sklearn import tree
+from sklearn.externals.six import StringIO 
+from sklearn.tree import export_graphviz
+import pydotplus
+
+dot_data = StringIO()
+export_graphviz(clf3, out_file=dot_data,  
+                filled=True, rounded=True,
+                special_characters=True)
+graph = pydotplus.graph_from_dot_data(dot_data.getvalue())
+
+print (graph)
+graph.write_pdf("iris.pdf")
+from IPython.display import Image
+
+Image(graph.create_png())
+
+
+# In[37]:
+
+final_predict=[]
+final_predict=list(predict1)+list(predict2)+list(predict3)
+final_predict = Counter(final_predict)
+print (final_predict.most_common(1)[0][0])
+
+
+# In[87]:
+
+def Predict(text):
+    P=vectorizer.transform([Cleaning(text)])
+    predict1=clf1.predict(P)
+    print (predict1)
+
+    predict2=clf2.predict(P)
+    print (predict2)
+    
+    predict3=clf3.predict(P)
+    print (predict3)
+    
+    final_predict=[]
+    final_predict=list(predict1)+list(predict2)+list(predict3)
+    final_predict = Counter(final_predict)
+    print (final_predict.most_common(1)[0][0])
+    
+    return final_predict.most_common(1)[0][0]
+    
+    
+    
+    
+
+
+# In[40]:
+
+##### Finding the most similar sentence
+from sklearn.metrics.pairwise import linear_kernel
+
+cosine_similarities = linear_kernel(X[1], X).flatten()
+print (cosine_similarities)
+index=[i+1 for i in range(len(X))]
+print (index)
+print (sorted(zip(cosine_similarities, index), reverse=True)[:3])
+
+
+# In[91]:
+
+### Checking Accuracy of the Classifier
+from sklearn.cross_validation import train_test_split
+from sklearn.metrics import confusion_matrix
+
+#X_train, X_test, Y_train, Y_test = train_test_split(data["question"], data["answer"], random_state=0)
+
+X_test=["have a nice day","what's for lunch","how are you"]
+Y_test=["greeting","sandwitch","greeting"]
+
+Y_pred=[]
+for i in X_test:
+    prediction=Predict(i)
+    print(prediction)
+    Y_pred.append(prediction)
+print (Y_pred)
+print (Y_test)
+cnf_matrix = confusion_matrix(Y_test,Y_pred)
+print (cnf_matrix)
+
+
+# In[92]:
+
+import numpy as np
+import itertools
+def plot_confusion_matrix(cm, classes,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    fmt = '.2f'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.tight_layout()
+    plt.show()
+plot_confusion_matrix(cnf_matrix, classes=["+","-"],title='Confusion matrix')
+
+
+# In[ ]:
+
+
+

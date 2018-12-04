@@ -1,13 +1,26 @@
 question,answer
-how are you ?,greeting
+how are you doing today ?,greeting
 how is your day ?,greeting
 good day,greeting
+good morning,greeting
+Hope you have a lovely and beautiful morning,greeting
+What a beautiful and pleasant day,greeting
+Have a pleasant morning,greeting
+what a lovely morning,greeting
 how is it going today ?,greeting
 have a nice day,goodbye
 see you later,goodbye
+good night,goodbye
+bye bye,goodbye
+talk to you later,goodbye
+see you sometime later,goodbye
 have a nice day,goodbye
 talk to you soon,goodbye
 make me a sandwich,sandwitch
-can you make a sandwich ?,sandwitch
-having a sandwich today ?,sandwitch
+can you make a sandwitch ?,sandwitch
+having a sandwitch today ?,sandwitch
 what's for lunch?,sandwitch
+I want to eat a sandwitch today,sandwitch
+I do not want a sandwitch today,sandwitch
+What is in the menu,sandwitch
+What is for lunch,sandwitch
